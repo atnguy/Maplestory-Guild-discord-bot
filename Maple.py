@@ -101,7 +101,8 @@ async def giverole(message):
                 await user.edit(nick=message.content)
             else:
                 if(len(rolelist)>1):
-                    await message.channel.send("I'm sorry you cannot change your name. Please message an officer for help.")
+                    #only offices should have access to the #names channel
+                    print("Ignoring officer message")
                 else:
                     await message.channel.send("I'm sorry thats not the correct format. Please type as ign [name] or ign[name].")
         
