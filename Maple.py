@@ -10,42 +10,33 @@ bot = commands.Bot(command_prefix='~', case_insensitive = True)
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
-help_description = "Sends you pings reminding you to pop your legion wealth or when your totem is about to expire. \nEnter the amount of wealth coupons in [number] you have for this sesison. \n" + \
-"[time] is what kind of wealth coupon you're using (30 minute ones by default). Enter the level or time amount" + "\n[length] is how long your current totem is in minutes. 120 minutes is by default"
+help_description = "Sends you pings reminding you to pop your legion wealth or when your totem is about to expire. \nEnter a number 1-5 in [Presets] to use a certain preset as described below. (If none is entered, preset 1 is used by default) \n" + \
+"1: 4 30 minute legion wealth coupons\n 2: 2 30 minute and 3 20 minute legion wealth coupons \n 3: 6 20 minute legion wealth coupons \n 4: 1 20 minute legion wealth coupon and 10 10 minute legion wealth coupons"
 @bot.command(name='totem',help =help_description)
-async def totem(ctx,number:int = None,time:int = None,length: int = None):
-    num = 0
+async def totem(ctx,preset: int=None):
+    num = 4
     intervals = 1800
     loop = 4
-    remainder = 0
-    if(number != None):
-        num = number
-    if(time !=None):
-        if(time == 1 or time == 10):
-            intervals = 600
-        if(time == 2 or time == 20):
-            intervals = 1200
-    if(length != None):
-        loop = (length * 60)//intervals
-        remainder = (length*60)%intervals
-    await ctx.send(f"{ctx.author.mention}, your totem session has started. I will ping you within the next {length} minutes for reminders.")
-    while(loop > 0 and loop*intervals >= length * 60):
+    if(preset != None):
+        if(preset == 2):
+           num = 5
+           loop = 5
+        if(preset == 3):
+            num = 6
+            loop = 6
+            intervals = 900
+        if(preset == 4):
+            num = 11
+            loop = 11
+            intervals = 900
+    await ctx.send(f"{ctx.author.mention}, your totem session has started. I will ping you within the next 2 hours for reminders.")
+    while(loop > 0):
         await asyncio.sleep(intervals)
-        minutes_left = (((loop-1)*intervals)+remainder)/60
-        if(minutes_left < 125 and minutes_left > 115):
-            if(num > 0):
-                await ctx.send(f"{ctx.author.mention} you have {minutes_left} minutes left on your totem and your legion wealth has expired")
-                num -= 1
-            else:
-                await ctx.send(f"{ctx.author.mention} you have {minutes_left} minutes hour left on your totem")
-        else:
-            if(num > 0):
-                await ctx.send(f"{ctx.author.mention} your legion wealth has expired")
-                num -= 1
+        if(num > 0):
+            await ctx.send(f"{ctx.author.mention} your legion wealth has expired")
+            num -= 1
         loop -= 1
-    
-    if(remainder !=0):
-        await asyncio.sleep(remainder)
+
     await ctx.send(f"{ctx.author.mention} your totem session has expired")
 '''
 @bot.command(name = "takuto",help="Spams 'fuck you @user' to a undetermined user until you use it ")
