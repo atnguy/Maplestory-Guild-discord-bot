@@ -82,19 +82,14 @@ async def giverole(message):
             user = message.author
             memberrole = discord.utils.get(user.guild.roles,name = "Members")
             #waiting for joe's permission to uncomment the followign block of code
-            '''
-            for role in rolelist:
-                if (role.name == "Members"):
-                    action = False
-            if(action):
-            await user.add_roles(memberrole)
-            '''
             informat = re.search("^\w+ \[{1}\w+\]{1}$",message.content)
             if informat and len(rolelist) == 1:
                 #assuring that you're roleless and you need a name
                 await user.edit(nick=message.content)
+                await user.add_roles(memberrole)
             elif re.search("^\w+\[{1}\w+\]{1}$",message.content) and len(rolelist) == 1:
                 await user.edit(nick=message.content)
+                await user.add_roles(memberrole)
             else:
                 if(len(rolelist)>1):
                     #only offices should have access to the #names channel
