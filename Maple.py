@@ -2,11 +2,14 @@ import os, discord, time, asyncio, names, random, re
 from datetime import datetime
 from dotenv import load_dotenv
 from discord.ext import commands
+from discord import FFmpegPCMAudio
+from discord.utils import get
+from youtube_dl import YoutubeDL
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 bot = commands.Bot(command_prefix='~', case_insensitive = True)
-
+links = []
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
@@ -43,19 +46,7 @@ async def totem(ctx,preset: int=None):
         loop -= 1
 
     await ctx.send(f"{ctx.author.mention} your totem session has expired")
-'''
-@bot.command(name = "takuto",help="Spams 'fuck you @user' to a undetermined user until you use it ")
-async def troll(ctx):
-    #troll command. Messing with my friends when I wrote this.
-    id = names.takuto()
-    who = ctx.message.author.id
-    if(who == 266035355013218304):
-        #making sure guen doesn't abuse this command
-        id = 266035355013218304
-        await ctx.author.send(f"Stop using this command <@{id}>")
-    else:
-        await ctx.send(f"Fuck you <@{id}>")
-'''
+
 @bot.command(name = "ror4",help="Alice decides if you should get a ror4 or not today")
 async def alicesaysno(ctx):
     num = random.randint(0,299)
@@ -66,6 +57,82 @@ async def alicesaysno(ctx):
 @bot.command(name = "hi", help = "Alice will say hi to you")
 async def sayshi(ctx):
     await ctx.send(f"hi <{ctx.author.nickname}>")
+'''
+A test function on play
+@bot.command(name = "music",help = "Alice will play something from Tony's computer, hopefully")
+async def music(ctx):
+    # grab the user who sent the command
+    user=ctx.author
+    voice_channel=user.voice.channel
+    channel=None
+    # only play music if user is in a voice channel
+    if voice_channel!= None:
+        # grab user's voice channel
+        channel=voice_channel.name
+        # create StreamPlayer
+        vc = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if not vc:
+            vc= await voice_channel.connect(timeout = 300.0)
+        player = vc.play(source = discord.FFmpegPCMAudio("aria.mp3"),after=None)
+        # disconnect after the player has finished
+        await vc.disconnect()
+    else:
+        await ctx.message.channel.send('User is not in a channel.')
+'''
+@bot.command(help = "plays the requested youtube link or otherwise adds it to the queue")
+async def play(ctx,url):
+    # grab the user who sent the command
+    user=ctx.author
+    voice_channel=user.voice.channel
+    channel=None
+    # only play music if user is in a voice channel
+    if voice_channel!= None:
+        # grab user's voice channel
+        channel=voice_channel.name
+        # create StreamPlayer
+        def playmusic(vc):
+            #vc is a voiceclient
+            YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist':'True'}
+            FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+            if not vc.is_playing():
+                global links
+                link = links.pop(0)
+                with YoutubeDL(YDL_OPTIONS) as ydl:
+                    info = ydl.extract_info(link, download=False)
+                URL = info['url']
+                vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
+                
+        vc = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if not vc:
+            vc= await voice_channel.connect(timeout = 300.0)
+        global links
+        links.append(url)
+        if not vc.is_playing():
+            playmusic(vc)
+            while vc.is_playing():
+                await asyncio.sleep(1)
+            while len(links) > 0:
+                playmusic(vc)
+                while vc.is_playing():
+                    await asyncio.sleep(1)
+        else:
+            await ctx.send("Added to queue")
+            return
+    else:
+        await ctx.message.channel.send('User is not in a channel.')
+@bot.command(help = "gets the alice bot to join the voice channel")
+async def join(ctx):
+    channel = ctx.author.voice.channel
+    await channel.connect()
+    
+@bot.command(help = "gets the alice bot to leave the voice channel")
+async def leave(ctx):
+    await ctx.voice_client.disconnect()
+
+@bot.command(help = "clears the music queue")
+async def clearqueue(ctx):
+    global links
+    links.clear()
 
 @bot.listen('on_message')
 async def giverole(message):
@@ -97,13 +164,5 @@ async def giverole(message):
                 else:
                     await message.channel.send("I'm sorry thats not the correct format. Please type as ign [name] or ign[name].")
         
-    '''
-    if(message.channel.id == 693706900767899648):
-        informat = re.search("^\w+\[{1}\w+\]{1}$",message.content)
-        if informat:
-            print("success")
-        else:
-            print("failure")
-    #test code for the regex
-    '''
+
 bot.run(TOKEN)
