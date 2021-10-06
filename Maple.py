@@ -9,7 +9,7 @@ from youtube_dl import YoutubeDL
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 bot = commands.Bot(command_prefix='~', case_insensitive = True)
-links = []
+links = asyncio.Queue()
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
@@ -79,7 +79,7 @@ async def music(ctx):
     else:
         await ctx.message.channel.send('User is not in a channel.')
 '''
-@bot.command(help = "plays the requested youtube link or otherwise adds it to the queue")
+@bot.command(help = "plays the requested youtube link/search term or otherwise adds it to the queue.\n Please type the search term in quotaion marks if you have more than one search term")
 async def play(ctx,url):
     # grab the user who sent the command
     user=ctx.author
@@ -90,33 +90,47 @@ async def play(ctx,url):
         # grab user's voice channel
         channel=voice_channel.name
         # create StreamPlayer
-        def playmusic(vc):
+        def playmusic(vc,link):
             #vc is a voiceclient
-            YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist':'True'}
+            YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist':'True', 'default_search': 'auto'}
             FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
             if not vc.is_playing():
-                global links
-                link = links.pop(0)
                 with YoutubeDL(YDL_OPTIONS) as ydl:
                     info = ydl.extract_info(link, download=False)
+                if info.__contains__('entries'):
+                    info = info['entries'][0]
                 URL = info['url']
                 vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
+                URL = info['webpage_url'] 
+            else:
+                with YoutubeDL(YDL_OPTIONS) as ydl:
+                    info = ydl.extract_info(link, download=False)
+                if info.__contains__('entries'):
+                    info = info['entries'][0]
+                URL = info['webpage_url']
+            return URL
                 
         vc = get(ctx.bot.voice_clients, guild=ctx.guild)
         if not vc:
             vc= await voice_channel.connect(timeout = 300.0)
         global links
-        links.append(url)
+        await links.put(url)
         if not vc.is_playing():
-            playmusic(vc)
+            link = await links.get()
+            URL = playmusic(vc,link)
+            await ctx.message.channel.send(f"Now playing {URL}")
             while vc.is_playing():
                 await asyncio.sleep(1)
-            while len(links) > 0:
-                playmusic(vc)
+            while not links.empty() > 0:
+                await asyncio.sleep(3)
+                link = await links.get()
+                URL = playmusic(vc,link)
+                await ctx.message.channel.send(f"Now playing {URL}")
                 while vc.is_playing():
                     await asyncio.sleep(1)
         else:
-            await ctx.send("Added to queue")
+            URL = playmusic(vc,url)
+            await ctx.message.channel.send(f"Added {URL} to queue")
             return
     else:
         await ctx.message.channel.send('User is not in a channel.')
